@@ -1,0 +1,15 @@
+# 每 10 分钟访问一次后端健康检查，防止 Render 免费实例休眠
+name: keepalive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health check
+        run: |
+          curl -fsS -o /dev/null "${{ secrets.BACKEND_URL }}/api/health" && echo "OK" || echo "PING_FAILED"

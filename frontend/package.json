@@ -1,0 +1,35 @@
+{
+  "name": "blog-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@tiptap/extension-color": "^2.5.4",
+    "@tiptap/extension-highlight": "^2.5.4",
+    "@tiptap/extension-image": "^2.5.4",
+    "@tiptap/extension-link": "^2.5.4",
+    "@tiptap/extension-text-align": "^2.5.4",
+    "@tiptap/extension-text-style": "^2.5.4",
+    "@tiptap/extension-underline": "^2.5.4",
+    "@tiptap/starter-kit": "^2.5.4",
+    "@tiptap/vue-3": "^2.5.4",
+    "@vicons/ionicons5": "^0.12.0",
+    "axios": "^1.7.2",
+    "naive-ui": "^2.38.2",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.31",
+    "vue-router": "^4.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3",
+    "vue-tsc": "^2.0.26"
+  }
+}

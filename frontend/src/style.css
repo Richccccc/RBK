@@ -1,0 +1,135 @@
+:root {
+  --brand: #7c7ce6;
+  --ink: #2c2c34;
+  --muted: #8a8a94;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #f7f7fa;
+  color: var(--ink);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+/* ---------- 博客正文排版 ---------- */
+.post-content {
+  font-size: 16px;
+  line-height: 1.9;
+  color: #333;
+  word-break: break-word;
+}
+.post-content h1,
+.post-content h2,
+.post-content h3,
+.post-content h4 {
+  margin: 1.2em 0 0.6em;
+  line-height: 1.4;
+}
+.post-content p {
+  margin: 0.6em 0;
+}
+.post-content img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+.post-content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+.post-content td,
+.post-content th {
+  border: 1px solid #ddd;
+  padding: 4px 8px;
+}
+.post-content ul,
+.post-content ol {
+  padding-left: 1.6em;
+}
+.post-content blockquote {
+  margin: 1em 0;
+  padding: 0.4em 1em;
+  border-left: 4px solid var(--brand);
+  background: #f2f2fa;
+  color: #555;
+}
+.post-content pre {
+  background: #1e1e28;
+  color: #e6e6e6;
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow: auto;
+}
+.post-content code {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+/* ---------- 按钮流光动画 ---------- */
+.n-button {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 悬停：流光从左扫到右 */
+.n-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55) 50%, transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+.n-button:hover::after {
+  animation: shine-sweep 0.6s ease forwards;
+}
+@keyframes shine-sweep {
+  from { left: -70%; }
+  to { left: 130%; }
+}
+
+/* 按下（选择）瞬间闪光 */
+.n-button:active::after {
+  animation: shine-flash 0.18s ease forwards;
+}
+@keyframes shine-flash {
+  from { left: -70%; opacity: 1; }
+  to { left: 130%; opacity: 0; }
+}
+
+/* 选中态（primary 类型按钮，如编辑器高亮项）持续流光 */
+.n-button--primary-type::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.45) 50%, transparent 75%);
+  background-size: 220% 100%;
+  animation: primary-shimmer 2.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes primary-shimmer {
+  0% { background-position: 180% 0; }
+  100% { background-position: -40% 0; }
+}
+
+/* 禁用按钮不显示流光 */
+.n-button--disabled::before,
+.n-button--disabled::after {
+  display: none;
+}
