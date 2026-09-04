@@ -20,3 +20,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# 部署手册（含真实数据库密码，不提交到仓库）
+DEPLOY.md
