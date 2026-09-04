@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     token_expire_minutes: int = 10080  # 7 天
     max_image_bytes: int = 5 * 1024 * 1024  # 5MB
+    # GitHub 图床（可选）：配置后图片存 GitHub 仓库，经 Cloudflare Worker 反代 + CDN 加速；
+    # 留空则回退为 base64 内联模式（功能不受影响，只是文章体积大）
+    github_token: str = ""  # PAT，需 repo 权限
+    github_repo: str = ""  # 如 "Richccccc/RBK-Images"
+    github_branch: str = "main"  # 存储分支
+    img_base_url: str = ""  # CDN 前缀，如 "https://img.rbk.beauty"；留空用 raw.githubusercontent.com
 
 
 settings = Settings()

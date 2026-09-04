@@ -9,6 +9,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import Post, PostType, User
 from ..schemas import PostCreate, PostListOut, PostListItem, PostOut, PostStatsOut, PostUpdate
+from ..utils.remote_images import externalize_data_urls
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -54,7 +55,11 @@ def create_post(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    post = Post(**data.model_dump(), author_id=user.id)
+    payload = data.model_dump()
+    # 正文/封面里的内联图片自动上传图床（未配置图床时原样保留）
+    payload["content"] = externalize_data_urls(payload.get("content") or "")
+    payload["cover_image"] = externalize_data_urls(payload.get("cover_image") or "")
+    post = Post(**payload, author_id=user.id)
     db.add(post)
     db.commit()
     db.refresh(post)
@@ -81,7 +86,12 @@ def update_post(
         raise HTTPException(status_code=404, detail="博客不存在")
     if post.author_id != user.id:
         raise HTTPException(status_code=403, detail="无权修改该博客")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    if "content" in changes:
+        changes["content"] = externalize_data_urls(changes["content"] or "")
+    if "cover_image" in changes:
+        changes["cover_image"] = externalize_data_urls(changes["cover_image"] or "")
+    for key, value in changes.items():
         setattr(post, key, value)
     db.commit()
     db.refresh(post)
