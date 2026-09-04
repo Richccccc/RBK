@@ -61,6 +61,10 @@ function onDelete() {
     onPositiveClick: async () => {
       try {
         await deletePost(post.value!.id)
+        // 清空首页列表缓存，避免回到首页短暂显示已删除的文章
+        Object.keys(sessionStorage)
+          .filter((k) => k.startsWith('posts-cache:'))
+          .forEach((k) => sessionStorage.removeItem(k))
         message.success('已删除')
         router.push('/')
       } catch {

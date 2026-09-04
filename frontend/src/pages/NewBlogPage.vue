@@ -18,6 +18,13 @@ const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
+// 文章变更后清空首页列表缓存，避免回到首页时短暂显示旧数据
+function clearListCache() {
+  Object.keys(sessionStorage)
+    .filter((k) => k.startsWith('posts-cache:'))
+    .forEach((k) => sessionStorage.removeItem(k))
+}
+
 const isEdit = computed(() => !!route.params.id)
 
 const title = ref('')
@@ -127,10 +134,12 @@ async function save() {
   try {
     if (isEdit.value) {
       await updatePost(route.params.id as string, payload)
+      clearListCache()
       message.success('已更新')
       router.push(`/post/${route.params.id}`)
     } else {
       const { data } = await createPost(payload)
+      clearListCache()
       message.success('发布成功')
       router.push(`/post/${data.id}`)
     }

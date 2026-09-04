@@ -79,3 +79,9 @@ class PostListItem(BaseModel):
 class PostListOut(BaseModel):
     total: int
     items: list[PostListItem]
+
+
+class PostStatsOut(BaseModel):
+    all: int
+    blog: int
+    diary: int

@@ -2,15 +2,24 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user
 from ..models import Post, PostType, User
-from ..schemas import PostCreate, PostListOut, PostListItem, PostOut, PostUpdate
+from ..schemas import PostCreate, PostListOut, PostListItem, PostOut, PostStatsOut, PostUpdate
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+# 注意：/stats 必须定义在 /{post_id} 之前，否则会被动态路由吞掉
+@router.get("/stats", response_model=PostStatsOut)
+def post_stats(db: Session = Depends(get_db)):
+    rows = db.query(Post.type, func.count(Post.id)).group_by(Post.type).all()
+    counts = {t: n for t, n in rows}
+    blog = counts.get(PostType.blog, 0)
+    diary = counts.get(PostType.diary, 0)
+    return PostStatsOut(all=blog + diary, blog=blog, diary=diary)
 
 
 @router.get("", response_model=PostListOut)

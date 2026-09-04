@@ -1,9 +1,9 @@
-# 每 10 分钟访问一次后端健康检查，防止 Render 免费实例休眠
+# 每 5 分钟（GitHub Actions 最小间隔）访问一次后端健康检查，降低 Vercel serverless 冷启动概率
 name: keepalive
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:

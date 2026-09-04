@@ -24,6 +24,12 @@ export interface PostListResponse {
   items: PostItem[]
 }
 
+export interface PostStats {
+  all: number
+  blog: number
+  diary: number
+}
+
 export interface PostPayload {
   title: string
   content: string
@@ -42,6 +48,10 @@ export function listPosts(params?: {
   size?: number
 }) {
   return http.get<PostListResponse>('/posts', { params })
+}
+
+export function postStats() {
+  return http.get<PostStats>('/posts/stats')
 }
 
 export function getPost(id: number | string) {

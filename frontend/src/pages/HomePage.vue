@@ -5,7 +5,7 @@ import { NButton, NIcon, NInput, NRadioButton, NRadioGroup, NSpin } from 'naive-
 import { CreateOutline } from '@vicons/ionicons5'
 import PostCard from '../components/PostCard.vue'
 import BlogPreview from '../components/BlogPreview.vue'
-import { listPosts, type PostItem, type PostType } from '../api/posts'
+import { listPosts, postStats, type PostItem, type PostType } from '../api/posts'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
@@ -45,8 +45,23 @@ watch(
   },
 )
 
+// 列表加载：先用 sessionStorage 缓存秒显，再后台静默刷新（API 链路慢，缓存显著改善二次打开体验）
+function listCacheKey() {
+  return `posts-cache:${filter.value}:${keyword.value || ''}`
+}
+
 async function fetchData() {
-  loading.value = true
+  const raw = sessionStorage.getItem(listCacheKey())
+  if (raw) {
+    try {
+      const c = JSON.parse(raw) as { items: PostItem[]; total: number }
+      items.value = c.items
+      total.value = c.total
+    } catch {
+      /* 缓存损坏则忽略 */
+    }
+  }
+  if (!raw) loading.value = true
   try {
     const { data } = await listPosts({
       type: filter.value === 'all' ? undefined : filter.value,
@@ -56,20 +71,17 @@ async function fetchData() {
     })
     items.value = data.items
     total.value = data.total
+    sessionStorage.setItem(listCacheKey(), JSON.stringify({ items: data.items, total: data.total }))
   } finally {
     loading.value = false
   }
 }
 
-// Hero 统计（3 个轻量请求拿准确 total）
+// Hero 统计（单次请求拿三类计数）
 async function fetchStats() {
   try {
-    const [a, b, d] = await Promise.all([
-      listPosts({ page: 1, size: 1 }),
-      listPosts({ page: 1, size: 1, type: 'blog' }),
-      listPosts({ page: 1, size: 1, type: 'diary' }),
-    ])
-    stats.value = { all: a.data.total, blog: b.data.total, diary: d.data.total }
+    const { data } = await postStats()
+    stats.value = { all: data.all, blog: data.blog, diary: data.diary }
   } catch {
     /* 统计失败不阻塞页面 */
   }
