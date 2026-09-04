@@ -3,12 +3,13 @@
 保真范围：标题、正文段落、粗体/斜体/下划线、字体、字号、颜色、高亮、
 对齐方式、项目符号/编号列表、表格、内联图片（以 data URL 内联）。
 """
-import base64
 import re
 from io import BytesIO
 
 from docx import Document
 from docx.oxml.ns import qn
+
+from ..utils.img_compress import compress_to_jpeg_data_url
 
 
 def _escape(text: str) -> str:
@@ -20,14 +21,14 @@ def _escape(text: str) -> str:
 
 
 def _image_to_data_url(doc: Document, rid: str) -> str:
-    """根据关系 id 读取图片二进制并转为 data URL。"""
+    """根据关系 id 读取图片二进制，压缩后转为 data URL。"""
     try:
         part = doc.part.rels[rid].target_part
         blob = part.blob
         content_type = part.content_type or "image/png"
         if "image" not in content_type:
             content_type = "image/png"
-        return "data:%s;base64,%s" % (content_type, base64.b64encode(blob).decode("ascii"))
+        return compress_to_jpeg_data_url(blob, content_type)
     except Exception:
         return ""
 

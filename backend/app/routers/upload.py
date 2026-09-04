@@ -1,12 +1,11 @@
-"""上传：图片（转 data URL）、Word 文档（转 HTML）。"""
-import base64
-
+"""上传：图片（压缩后转 data URL）、Word 文档（转 HTML）。"""
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from ..config import settings
 from ..deps import get_current_user
 from ..models import User
 from ..services.word_parser import parse_docx_to_html
+from ..utils.img_compress import compress_to_jpeg_data_url
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -22,7 +21,7 @@ async def upload_image(
     content_type = file.content_type or "image/png"
     if not content_type.startswith("image/"):
         content_type = "image/png"
-    url = "data:%s;base64,%s" % (content_type, base64.b64encode(data).decode("ascii"))
+    url = compress_to_jpeg_data_url(data, content_type)
     return {"url": url}
 
 
