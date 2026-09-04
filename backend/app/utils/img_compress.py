@@ -6,9 +6,14 @@
 import base64
 from io import BytesIO
 
-from PIL import Image
+try:
+    from PIL import Image
 
-MAX_DIMENSION = 1600
+    PIL_AVAILABLE = True
+except Exception:  # Pillow 不可用时降级为不压缩，保证服务可用
+    PIL_AVAILABLE = False
+
+MAX_DIMENSION = 1280
 QUALITY = 82
 
 
@@ -19,6 +24,8 @@ def _fallback_data_url(data: bytes, content_type: str) -> str:
 
 def compress_to_jpeg_data_url(data: bytes, content_type: str = "") -> str:
     """压缩图片并返回 JPEG data URL；解析失败时退回原始 data URL。"""
+    if not PIL_AVAILABLE:
+        return _fallback_data_url(data, content_type)
     try:
         img = Image.open(BytesIO(data))
         img.load()
