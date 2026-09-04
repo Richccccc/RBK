@@ -40,16 +40,44 @@ function formatDate(s: string) {
 
 <style scoped>
 .post-card {
+  position: relative;
   background: #fff;
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
+  animation: card-in 0.45s ease backwards;
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .post-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 22px rgba(59, 130, 246, 0.18);
+}
+/* hover 顶部流光 */
+.post-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 1;
+  background: linear-gradient(90deg, #1d4ed8, #60a5fa, #1d4ed8);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+.post-card:hover::before {
+  transform: translateX(0);
 }
 .cover {
   width: 100%;
@@ -68,7 +96,7 @@ function formatDate(s: string) {
   align-items: center;
   justify-content: center;
   padding: 0 16px;
-  background: linear-gradient(135deg, #eef0ff, #f6f6fb);
+  background: linear-gradient(135deg, #eaf2ff, #f5faff);
   color: #8a8a94;
   font-size: 15px;
   text-align: center;

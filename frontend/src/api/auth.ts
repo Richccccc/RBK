@@ -11,10 +11,6 @@ export interface LoginResponse {
   user: AuthUser
 }
 
-export function register(username: string, password: string) {
-  return http.post<LoginResponse>('/auth/register', { username, password })
-}
-
 export function login(username: string, password: string) {
   return http.post<LoginResponse>('/auth/login', { username, password })
 }

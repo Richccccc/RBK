@@ -77,7 +77,8 @@ function onSelect(key: string) {
     case 'logout':
       auth.logout()
       refreshAccountOptions()
-      router.push('/')
+      // 显式去登录页（push('/') 在首页时是同路由导航，守卫不会重定向）
+      router.push('/login')
       break
     default:
       break
@@ -118,7 +119,7 @@ function open() {
   top: 18px;
   left: 18px;
   z-index: 2000;
-  box-shadow: 0 6px 18px rgba(124, 124, 230, 0.35);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.35);
 }
 .drawer-tip {
   margin-top: 16px;

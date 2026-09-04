@@ -1,5 +1,5 @@
 :root {
-  --brand: #7c7ce6;
+  --brand: #3b82f6;
   --ink: #2c2c34;
   --muted: #8a8a94;
 }
@@ -64,7 +64,7 @@ a {
   margin: 1em 0;
   padding: 0.4em 1em;
   border-left: 4px solid var(--brand);
-  background: #f2f2fa;
+  background: #eef4ff;
   color: #555;
 }
 .post-content pre {

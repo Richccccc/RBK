@@ -12,6 +12,7 @@ import {
 } from 'naive-ui'
 import { deletePost, getPost, type PostDetail } from '../api/posts'
 import { useAuthStore } from '../stores/auth'
+import PostLightbox from '../components/PostLightbox.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,6 +22,13 @@ const auth = useAuthStore()
 
 const post = ref<PostDetail | null>(null)
 const loading = ref(true)
+
+// 点击正文/封面图片 → 灯箱放大查看
+const lightboxSrc = ref<string | null>(null)
+function onArticleClick(e: MouseEvent) {
+  const img = (e.target as HTMLElement | null)?.closest?.('img') as HTMLImageElement | null
+  if (img?.src) lightboxSrc.value = img.src
+}
 
 function formatDate(s: string) {
   const d = new Date(s)
@@ -68,7 +76,7 @@ onMounted(load)
 <template>
   <div class="detail-page">
     <NSpin :show="loading">
-      <article v-if="post" class="article">
+      <article v-if="post" class="article" @click="onArticleClick">
         <div class="meta">
           <NTag size="small" :bordered="false" :type="post.type === 'diary' ? 'info' : 'primary'">
             {{ post.type === 'diary' ? '日记' : '博客' }}
@@ -101,14 +109,16 @@ onMounted(load)
     </NSpin>
 
     <NBackTop :right="40" :bottom="40" />
+
+    <PostLightbox :src="lightboxSrc" @close="lightboxSrc = null" />
   </div>
 </template>
 
 <style scoped>
 .detail-page {
-  max-width: 760px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 80px 24px 80px;
+  padding: 28px 24px 80px;
 }
 .meta {
   display: flex;
@@ -138,5 +148,11 @@ onMounted(load)
 .cover img {
   width: 100%;
   border-radius: 12px;
+  cursor: zoom-in;
+}
+
+/* 正文图片可点击放大 */
+.post-content img {
+  cursor: zoom-in;
 }
 </style>

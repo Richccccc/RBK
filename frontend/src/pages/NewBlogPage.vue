@@ -187,9 +187,9 @@ async function save() {
 
 <style scoped>
 .editor-page {
-  max-width: 1000px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 80px 24px 60px;
+  padding: 28px 24px 60px;
 }
 .head {
   margin-bottom: 16px;

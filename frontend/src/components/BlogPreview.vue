@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NModal, NSkeleton, NTag } from 'naive-ui'
 import { getPost, type PostDetail } from '../api/posts'
+import PostLightbox from './PostLightbox.vue'
 
 const props = defineProps<{ show: boolean; postId: number | null }>()
 const emit = defineEmits<{ (e: 'update:show', v: boolean): void }>()
@@ -10,6 +11,9 @@ const emit = defineEmits<{ (e: 'update:show', v: boolean): void }>()
 const router = useRouter()
 const post = ref<PostDetail | null>(null)
 const loading = ref(false)
+
+// 封面点击放大
+const lightboxSrc = ref<string | null>(null)
 
 // 首选用封图，否则取正文第一张图片
 function firstImage(p: PostDetail): string {
@@ -73,7 +77,14 @@ function openDetail() {
           <div class="text-mode"><NSkeleton text :repeat="3" /></div>
         </template>
         <template v-else-if="post">
-          <img v-if="cover" :src="cover" class="cover-img" alt="封面" />
+          <img
+            v-if="cover"
+            :src="cover"
+            class="cover-img"
+            alt="封面"
+            title="点击放大"
+            @click="lightboxSrc = cover"
+          />
           <div v-else class="text-mode">
             <h2 class="text-title">{{ post.title }}</h2>
             <p class="text-body">{{ textPreview }}</p>
@@ -95,6 +106,8 @@ function openDetail() {
         <NButton size="small" type="primary" @click="openDetail">查看全文</NButton>
       </div>
     </div>
+
+    <PostLightbox :src="lightboxSrc" @close="lightboxSrc = null" />
   </NModal>
 </template>
 
@@ -116,6 +129,7 @@ function openDetail() {
   height: 100%;
   object-fit: cover;
   display: block;
+  cursor: zoom-in;
 }
 .text-mode {
   width: 100%;
@@ -125,7 +139,7 @@ function openDetail() {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: linear-gradient(135deg, #eef0ff, #fdfdff);
+  background: linear-gradient(135deg, #eaf2ff, #fbfdff);
   color: var(--ink);
 }
 .text-title {

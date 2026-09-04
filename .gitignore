@@ -17,6 +17,7 @@ frontend/.env.local
 .idea/
 .DS_Store
 Thumbs.db
+.trae/
 
 # Logs
 *.log
