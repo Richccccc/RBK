@@ -13,6 +13,7 @@ import {
 import BlogEditor from '../components/BlogEditor.vue'
 import { createPost, getPost, updatePost, uploadImage, uploadWord, type PostType } from '../api/posts'
 import { FONT_OPTIONS } from '../utils/fonts'
+import { compressImageFile } from '../utils/image'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,7 +84,8 @@ async function onPickCover(options: NUploadRequest) {
     return
   }
   try {
-    cover.value = await uploadImage(file)
+    const compressed = await compressImageFile(file)
+    cover.value = await uploadImage(compressed)
     message.success('封面已上传')
   } catch (e: any) {
     message.error(extractError(e, '封面上传失败'))

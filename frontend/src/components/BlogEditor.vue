@@ -24,6 +24,7 @@ import {
 import { FontFamily, FontSize } from '../utils/tiptapExt'
 import { FONT_OPTIONS, FONT_SIZE_OPTIONS } from '../utils/fonts'
 import { uploadImage } from '../api/posts'
+import { compressImageFile } from '../utils/image'
 
 const props = defineProps<{ modelValue: string }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
@@ -93,9 +94,10 @@ function pickImage() {
 }
 async function onImage(e: Event) {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file || !editor.value) return
+  const picked = input.files?.[0]
+  if (!picked || !editor.value) return
   try {
+    const file = await compressImageFile(picked)
     const url = await uploadImage(file)
     editor.value.chain().focus().setImage({ src: url }).run()
     message.success('图片已插入')
