@@ -16,14 +16,18 @@ const router = createRouter({
       meta: { postType: 'diary' },
     },
     {
-      path: '/sheets',
-      name: 'sheets',
-      component: () => import('../pages/SheetsPage.vue'),
+      path: '/templates',
+      name: 'templates',
+      component: () => import('../pages/HomePage.vue'),
     },
     {
       path: '/guestbook',
       name: 'guestbook',
-      component: () => import('../pages/GuestbookPage.vue'),
+      component: () => import('../pages/HomePage.vue'),
+    },
+    {
+      path: '/sheets',
+      redirect: '/templates',
     },
     {
       path: '/post/:id',

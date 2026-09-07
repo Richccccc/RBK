@@ -93,86 +93,80 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div class="page">
-    <header class="head">
-      <div>
-        <h1>留言板</h1>
-        <p class="sub">有什么想说的，留下一句话吧 · 共 {{ total }} 条</p>
-      </div>
-    </header>
-
-    <!-- 留言表单 -->
-    <div class="composer">
-      <NIcon :component="ChatbubblesOutline" :size="26" class="composer-icon" />
-      <div class="composer-main">
-        <NInput v-model:value="name" placeholder="你的昵称" maxlength="30" style="width: 200px" />
-        <NInput
-          v-model:value="content"
-          type="textarea"
-          placeholder="写下你的留言…（≤1000 字）"
-          :rows="3"
-          maxlength="1000"
-          show-count
-        />
-        <div class="composer-foot">
-          <NButton type="primary" :loading="submitting" @click="submit">
-            <template #icon><NIcon :component="SendOutline" /></template>
-            发表留言
-          </NButton>
-        </div>
-      </div>
-    </div>
-
-    <NSpin :show="loading">
-      <div v-if="items.length" class="list">
-        <div v-for="m in items" :key="m.id" class="msg">
-          <NAvatar round :style="{ background: avatarColor(m.name), color: '#fff', fontWeight: 600 }">
-            {{ m.name.slice(0, 1).toUpperCase() }}
-          </NAvatar>
-          <div class="bubble-wrap">
-            <div class="bubble-head">
-              <span class="name">{{ m.name }}</span>
-              <span class="time">{{ fmtDate(m.created_at) }}</span>
-              <NPopconfirm v-if="auth.isLogin" @positive-click="onDelete(m.id)">
-                <template #trigger>
-                  <NButton size="tiny" quaternary type="error" class="del">
-                    <template #icon><NIcon :component="TrashOutline" /></template>
-                  </NButton>
-                </template>
-                确定删除这条留言？
-              </NPopconfirm>
-            </div>
-            <div class="bubble">{{ m.content }}</div>
+  <div class="panel">
+    <div class="board">
+      <!-- 留言表单 -->
+      <div class="composer">
+        <NIcon :component="ChatbubblesOutline" :size="26" class="composer-icon" />
+        <div class="composer-main">
+          <NInput v-model:value="name" placeholder="你的昵称" maxlength="30" style="width: 200px" />
+          <NInput
+            v-model:value="content"
+            type="textarea"
+            placeholder="写下你的留言…（≤1000 字）"
+            :rows="3"
+            maxlength="1000"
+            show-count
+          />
+          <div class="composer-foot">
+            <NButton type="primary" :loading="submitting" @click="submit">
+              <template #icon><NIcon :component="SendOutline" /></template>
+              发表留言
+            </NButton>
           </div>
         </div>
       </div>
-      <NEmpty v-else-if="!loading" description="还没有留言，来抢沙发" style="padding: 60px 0" />
-    </NSpin>
 
-    <div v-if="totalpages > 1" class="pager">
-      <NPagination :page="page" :page-count="totalpages" @update:page="onPageChange" />
+      <NSpin :show="loading">
+        <div v-if="items.length" class="list">
+          <div v-for="m in items" :key="m.id" class="msg">
+            <NAvatar round :style="{ background: avatarColor(m.name), color: '#fff', fontWeight: 600 }">
+              {{ m.name.slice(0, 1).toUpperCase() }}
+            </NAvatar>
+            <div class="bubble-wrap">
+              <div class="bubble-head">
+                <span class="name">{{ m.name }}</span>
+                <span class="time">{{ fmtDate(m.created_at) }}</span>
+                <NPopconfirm v-if="auth.isLogin" @positive-click="onDelete(m.id)">
+                  <template #trigger>
+                    <NButton size="tiny" quaternary type="error" class="del">
+                      <template #icon><NIcon :component="TrashOutline" /></template>
+                    </NButton>
+                  </template>
+                  确定删除这条留言？
+                </NPopconfirm>
+              </div>
+              <div class="bubble">{{ m.content }}</div>
+            </div>
+          </div>
+        </div>
+        <NEmpty v-else-if="!loading" description="还没有留言，来抢沙发" style="padding: 60px 0" />
+      </NSpin>
+
+      <div v-if="totalpages > 1" class="pager">
+        <NPagination :page="page" :page-count="totalpages" @update:page="onPageChange" />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.page {
+.panel {
+  animation: panel-in 0.4s ease backwards;
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.board {
   max-width: 880px;
   margin: 0 auto;
-  padding: 28px 24px 60px;
-}
-.head {
-  margin-bottom: 20px;
-}
-.head h1 {
-  margin: 0 0 6px;
-  font-size: 26px;
-  color: var(--ink, #1f2937);
-}
-.sub {
-  margin: 0;
-  font-size: 13px;
-  color: #999;
 }
 
 /* 留言表单：浅蓝玻璃卡 */

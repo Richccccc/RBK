@@ -54,10 +54,6 @@ export function listPosts(params?: {
   return http.get<PostListResponse>('/posts', { params })
 }
 
-export function postStats() {
-  return http.get<PostStats>('/posts/stats')
-}
-
 export function getPost(id: number | string) {
   return http.get<PostDetail>(`/posts/${id}`)
 }

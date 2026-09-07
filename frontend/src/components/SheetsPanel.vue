@@ -85,7 +85,7 @@ async function fetchData() {
     items.value = data.items
     total.value = data.total
   } catch {
-    message.error('加载表格列表失败')
+    message.error('加载模板列表失败')
   } finally {
     loading.value = false
   }
@@ -169,13 +169,10 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div class="page">
-    <header class="head">
-      <div>
-        <h1>表格参考</h1>
-        <p class="sub">上传 Excel/CSV，网页直接预览，随时下载原文件</p>
-      </div>
-      <div class="head-actions">
+  <div class="panel">
+    <div class="toolbar">
+      <span class="hint">上传 Excel/CSV，网页直接预览，随时下载原文件 · 共 {{ total }} 个</span>
+      <div class="toolbar-actions">
         <NInput
           v-model:value="keyword"
           placeholder="搜索名称或备注"
@@ -184,9 +181,9 @@ onMounted(fetchData)
           @keyup.enter="onSearch"
           @clear="onSearch"
         />
-        <NButton type="primary" @click="openUpload">上传表格</NButton>
+        <NButton type="primary" @click="openUpload">上传模板</NButton>
       </div>
-    </header>
+    </div>
 
     <NSpin :show="loading">
       <div v-if="items.length" class="grid">
@@ -223,19 +220,19 @@ onMounted(fetchData)
                   删除
                 </NButton>
               </template>
-              确定删除该表格？
+              确定删除该模板？
             </NPopconfirm>
           </div>
         </NCard>
       </div>
       <div v-else-if="!loading" class="empty">
-        <p class="empty-text">还没有表格，上传一个 xlsx 或 csv 吧</p>
-        <NButton type="primary" @click="openUpload">上传表格</NButton>
+        <p class="empty-text">还没有模板，上传一个 xlsx 或 csv 吧</p>
+        <NButton type="primary" @click="openUpload">上传模板</NButton>
       </div>
     </NSpin>
 
     <!-- 上传弹层 -->
-    <NModal v-model:show="uploadVisible" preset="card" title="上传表格" style="width: 460px">
+    <NModal v-model:show="uploadVisible" preset="card" title="上传模板" style="width: 460px">
       <div class="upload-form">
         <NUpload
           accept=".xlsx,.csv"
@@ -246,7 +243,7 @@ onMounted(fetchData)
         >
           <NButton>选择文件（.xlsx / .csv，≤8MB）</NButton>
         </NUpload>
-        <NInput v-model:value="formName" placeholder="表格名称（默认取文件名）" />
+        <NInput v-model:value="formName" placeholder="模板名称（默认取文件名）" />
         <NInput v-model:value="formDesc" type="textarea" placeholder="备注（可选）" :rows="2" />
         <NButton type="primary" block :loading="uploading" @click="submitUpload">
           上传并解析
@@ -256,7 +253,7 @@ onMounted(fetchData)
 
     <!-- 预览抽屉 -->
     <NDrawer v-model:show="previewVisible" :width="860" placement="right">
-      <NDrawerContent :title="detail?.name || '表格预览'" closable>
+      <NDrawerContent :title="detail?.name || '模板预览'" closable>
         <div v-if="detail" class="preview">
           <div class="preview-bar">
             <NTag size="small" :bordered="false" type="primary">
@@ -299,30 +296,32 @@ onMounted(fetchData)
 </template>
 
 <style scoped>
-.page {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 28px 24px 60px;
+.panel {
+  animation: panel-in 0.4s ease backwards;
 }
-.head {
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
-.head h1 {
-  margin: 0 0 6px;
-  font-size: 26px;
-  color: var(--ink, #1f2937);
-}
-.sub {
-  margin: 0;
+.hint {
   font-size: 13px;
   color: #999;
 }
-.head-actions {
+.toolbar-actions {
   display: flex;
   gap: 10px;
 }

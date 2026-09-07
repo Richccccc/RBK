@@ -17,52 +17,42 @@ import {
 } from '@vicons/ionicons5'
 import PostCard from '../components/PostCard.vue'
 import BlogPreview from '../components/BlogPreview.vue'
-import { listPosts, postStats, type PostItem, type PostType } from '../api/posts'
+import SheetsPanel from '../components/SheetsPanel.vue'
+import GuestbookPanel from '../components/GuestbookPanel.vue'
+import { listPosts, type PostItem, type PostType } from '../api/posts'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-// 路由决定内容模块：/ 为博客，/diary 为日记
+// 路由决定内容模块：/ 为博客，/diary 为日记，/templates 模板，/guestbook 留言板（均在主页内切换）
+const isPostModule = computed(() => route.path === '/' || route.path === '/diary')
 const filter = ref<PostType>('blog')
 const keyword = ref('')
 const items = ref<PostItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 
-const stats = ref({ all: 0, blog: 0, diary: 0, sheets: 0, messages: 0 })
-
 const previewVisible = ref(false)
 const previewId = ref<number | null>(null)
 
 const title = computed(() => (filter.value === 'diary' ? '日记' : '博客'))
 
-// Hero 问候与日期
-const greeting = computed(() => {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 11) return '早上好'
-  if (h >= 11 && h < 18) return '下午好'
-  return '晚上好'
-})
-const today = computed(() =>
-  new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }),
-)
-
-// 四大模块入口
+// 四大模块入口（点击在主页内切换内容，不做页面跳转）
 const modules = computed(() => [
-  { key: 'home', label: '博客', desc: '技术分享与随笔', icon: HomeOutline, count: stats.value.blog, path: '/' },
-  { key: 'diary', label: '日记', desc: '记录日常点滴', icon: BookOutline, count: stats.value.diary, path: '/diary' },
-  { key: 'sheets', label: '表格参考', desc: 'Excel/CSV 在线预览', icon: GridOutline, count: stats.value.sheets, path: '/sheets' },
-  { key: 'guestbook', label: '留言板', desc: '留下你想说的话', icon: ChatbubblesOutline, count: stats.value.messages, path: '/guestbook' },
+  { key: 'home', label: '博客', desc: '技术分享与随笔', icon: HomeOutline, path: '/' },
+  { key: 'diary', label: '日记', desc: '记录日常点滴', icon: BookOutline, path: '/diary' },
+  { key: 'templates', label: '模板', desc: 'Excel/CSV 在线预览', icon: GridOutline, path: '/templates' },
+  { key: 'guestbook', label: '留言板', desc: '留下你想说的话', icon: ChatbubblesOutline, path: '/guestbook' },
 ])
 
-// 根据路由切换模块（/ 博客，/diary 日记）
+// 根据路由切换模块
 watch(
   () => route.path,
   () => {
     filter.value = route.path === '/diary' ? 'diary' : 'blog'
-    fetchData()
+    if (isPostModule.value) fetchData()
   },
 )
 
@@ -98,22 +88,6 @@ async function fetchData() {
   }
 }
 
-// Hero 统计（单次请求拿全部计数）
-async function fetchStats() {
-  try {
-    const { data } = await postStats()
-    stats.value = {
-      all: data.all,
-      blog: data.blog,
-      diary: data.diary,
-      sheets: data.sheets ?? 0,
-      messages: data.messages ?? 0,
-    }
-  } catch {
-    /* 统计失败不阻塞页面 */
-  }
-}
-
 function onSearch() {
   fetchData()
 }
@@ -129,39 +103,11 @@ function openPreview(id: number) {
 
 onMounted(() => {
   fetchData()
-  fetchStats()
 })
 </script>
 
 <template>
   <div class="page">
-    <!-- Hero 横幅 -->
-    <header class="hero">
-      <div class="hero-shine" aria-hidden="true"></div>
-      <div class="hero-blob hb1" aria-hidden="true"></div>
-      <div class="hero-blob hb2" aria-hidden="true"></div>
-      <div class="hero-main">
-        <div class="hero-text">
-          <h1>{{ greeting }}，{{ auth.user?.username || '朋友' }}</h1>
-          <p class="date">{{ today }} · 这里是你的小天地</p>
-        </div>
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="num">{{ stats.all }}</span>
-            <span class="label">文章</span>
-          </div>
-          <div class="stat">
-            <span class="num">{{ stats.sheets }}</span>
-            <span class="label">表格</span>
-          </div>
-          <div class="stat">
-            <span class="num">{{ stats.messages }}</span>
-            <span class="label">留言</span>
-          </div>
-        </div>
-      </div>
-    </header>
-
     <!-- 四大模块入口 -->
     <nav class="modules">
       <button
@@ -176,45 +122,60 @@ onMounted(() => {
         <NIcon :component="m.icon" :size="26" class="m-icon" />
         <span class="m-label">{{ m.label }}</span>
         <span class="m-desc">{{ m.desc }}</span>
-        <span class="m-count">{{ m.count }}</span>
       </button>
     </nav>
 
-    <div class="filters">
-      <NTag size="small" :bordered="false" type="primary">{{ title }}</NTag>
-      <NInput
-        v-model:value="keyword"
-        placeholder="搜索标题或摘要"
-        clearable
-        style="width: 220px"
-        @keyup.enter="onSearch"
-        @clear="onSearch"
-      />
-      <NButton size="small" @click="onSearch">搜索</NButton>
-      <span class="count">{{ title }}共 {{ total }} 篇</span>
-    </div>
+    <!-- 内容区：模块内切换（带淡入过渡） -->
+    <Transition name="panel" mode="out-in">
+      <!-- 博客 / 日记列表 -->
+      <div v-if="isPostModule" :key="route.path">
+        <div class="filters">
+          <NTag size="small" :bordered="false" type="primary">{{ title }}</NTag>
+          <NInput
+            v-model:value="keyword"
+            placeholder="搜索标题或摘要"
+            clearable
+            style="width: 220px"
+            @keyup.enter="onSearch"
+            @clear="onSearch"
+          />
+          <NButton size="small" @click="onSearch">搜索</NButton>
+          <NButton size="small" type="primary" @click="router.push('/new')">
+            <template #icon><NIcon :component="CreateOutline" /></template>
+            写一篇
+          </NButton>
+          <span class="count">{{ title }}共 {{ total }} 篇</span>
+        </div>
 
-    <NSpin :show="loading">
-      <div v-if="items.length" class="grid">
-        <PostCard
-          v-for="(p, i) in items"
-          :key="p.id"
-          :post="p"
-          :style="{ animationDelay: Math.min(i * 60, 600) + 'ms' }"
-          @click="goDetail(p.id)"
-          @preview="openPreview(p.id)"
-        />
-      </div>
-      <div v-else-if="!loading" class="empty">
-        <NIcon :component="CreateOutline" :size="46" class="empty-icon" />
-        <p class="empty-text">还没有内容，写下第一篇吧</p>
-        <NButton type="primary" @click="router.push(auth.isLogin ? '/new' : '/login?redirect=/new')">
-          开始写作
-        </NButton>
-      </div>
-    </NSpin>
+        <NSpin :show="loading">
+          <div v-if="items.length" class="grid">
+            <PostCard
+              v-for="(p, i) in items"
+              :key="p.id"
+              :post="p"
+              :style="{ animationDelay: Math.min(i * 60, 600) + 'ms' }"
+              @click="goDetail(p.id)"
+              @preview="openPreview(p.id)"
+            />
+          </div>
+          <div v-else-if="!loading" class="empty">
+            <NIcon :component="CreateOutline" :size="46" class="empty-icon" />
+            <p class="empty-text">还没有内容，写下第一篇吧</p>
+            <NButton type="primary" @click="router.push('/new')">
+              开始写作
+            </NButton>
+          </div>
+        </NSpin>
 
-    <BlogPreview v-model:show="previewVisible" :post-id="previewId" />
+        <BlogPreview v-model:show="previewVisible" :post-id="previewId" />
+      </div>
+
+      <!-- 模板 -->
+      <SheetsPanel v-else-if="route.path === '/templates'" key="templates" />
+
+      <!-- 留言板 -->
+      <GuestbookPanel v-else key="guestbook" />
+    </Transition>
   </div>
 </template>
 
@@ -225,133 +186,25 @@ onMounted(() => {
   padding: 28px 24px 60px;
 }
 
-/* ---------- Hero 横幅（浅蓝玻璃 + 流动彩光） ---------- */
-.hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: 20px;
-  padding: 26px 30px;
-  /* 白-蓝为主，穿插淡紫/淡金过渡色，渐变缓慢循环流动 */
-  background: linear-gradient(
-    120deg,
-    rgba(255, 255, 255, 0.75),
-    rgba(219, 234, 254, 0.62) 22%,
-    rgba(147, 197, 253, 0.52) 42%,
-    rgba(167, 180, 252, 0.45) 60%,
-    rgba(253, 230, 190, 0.4) 78%,
-    rgba(186, 214, 255, 0.55) 92%,
-    rgba(255, 255, 255, 0.7)
-  );
-  background-size: 320% 320%;
-  animation: hero-flow 16s ease-in-out infinite;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  color: #1e3a8a;
-  box-shadow: 0 10px 30px rgba(96, 140, 220, 0.18);
+/* 内容区切换过渡 */
+.panel-enter-active,
+.panel-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
-@keyframes hero-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+.panel-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
 }
-.hero-shine {
-  position: absolute;
-  top: 0;
-  left: -70%;
-  width: 45%;
-  height: 100%;
-  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.2) 50%, transparent);
-  transform: skewX(-18deg);
-  animation: hero-shine 3.2s ease infinite;
-}
-@keyframes hero-shine {
-  0% {
-    left: -70%;
-  }
-  55%,
-  100% {
-    left: 135%;
-  }
-}
-.hero-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.4;
-  pointer-events: none;
-}
-.hb1 {
-  width: 260px;
-  height: 260px;
-  background: #bfdbfe;
-  top: -110px;
-  right: -60px;
-}
-.hb2 {
-  width: 200px;
-  height: 200px;
-  background: #93c5fd;
-  bottom: -100px;
-  left: 30%;
-}
-.hero-main {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-.hero-text h1 {
-  margin: 0 0 6px;
-  font-size: 26px;
-  letter-spacing: 1px;
-}
-.date {
-  margin: 0;
-  font-size: 13px;
-  color: rgba(30, 58, 138, 0.62);
-  letter-spacing: 1px;
-}
-.hero-stats {
-  display: flex;
-  gap: 12px;
-}
-.stat {
-  min-width: 74px;
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(6px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-.stat .num {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #2563eb;
-}
-.stat .label {
-  font-size: 12px;
-  color: rgba(30, 58, 138, 0.68);
+.panel-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
 .filters {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 22px 0 24px;
+  margin: 4px 0 24px;
   flex-wrap: wrap;
 }
 .count {
@@ -365,7 +218,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  margin-top: 18px;
+  margin-bottom: 20px;
 }
 .module-card {
   position: relative;
@@ -441,19 +294,6 @@ onMounted(() => {
   font-size: 12px;
   color: rgba(30, 58, 138, 0.6);
 }
-.m-count {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  min-width: 26px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.12);
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
-}
 
 @media (max-width: 900px) {
   .modules {
@@ -492,18 +332,6 @@ onMounted(() => {
 @media (max-width: 640px) {
   .page {
     padding: 20px 14px 50px;
-  }
-  .hero {
-    padding: 20px 18px;
-  }
-  .hero-text h1 {
-    font-size: 21px;
-  }
-  .hero-stats {
-    width: 100%;
-  }
-  .stat {
-    flex: 1;
   }
 }
 </style>

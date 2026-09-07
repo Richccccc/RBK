@@ -9,7 +9,7 @@ import {
   zhCN,
   type GlobalThemeOverrides,
 } from 'naive-ui'
-import FeatureDrawer from './components/FeatureDrawer.vue'
+import TopBar from './components/TopBar.vue'
 import WelcomeOverlay from './components/WelcomeOverlay.vue'
 import { useAuthStore } from './stores/auth'
 
@@ -50,7 +50,7 @@ watch(
   <n-config-provider :locale="zhCN" :date-locale="dateZhCN" :theme-overrides="themeOverrides">
     <n-message-provider>
       <n-dialog-provider>
-        <FeatureDrawer v-if="auth.isLogin" />
+        <TopBar v-if="auth.isLogin" />
         <WelcomeOverlay v-if="showWelcome" @done="showWelcome = false" />
         <RouterView v-slot="{ Component }">
           <Transition name="page" mode="out-in">
