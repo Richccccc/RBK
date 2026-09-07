@@ -37,6 +37,7 @@ class PostCreate(BaseModel):
     category: str = "未分类"
     font_family: str = ""
     cover_image: str = ""
+    pinned: bool = False
 
 
 class PostUpdate(BaseModel):
@@ -47,6 +48,7 @@ class PostUpdate(BaseModel):
     category: Optional[str] = None
     font_family: Optional[str] = None
     cover_image: Optional[str] = None
+    pinned: Optional[bool] = None
 
 
 class PostOut(BaseModel):
@@ -59,6 +61,7 @@ class PostOut(BaseModel):
     category: str
     font_family: str
     cover_image: str
+    pinned: bool
     author_id: int
     created_at: datetime
     updated_at: datetime
@@ -72,6 +75,7 @@ class PostListItem(BaseModel):
     type: PostType
     category: str
     cover_image: str
+    pinned: bool
     created_at: datetime
     updated_at: datetime
 
@@ -85,3 +89,61 @@ class PostStatsOut(BaseModel):
     all: int
     blog: int
     diary: int
+    sheets: int = 0
+    messages: int = 0
+
+
+# ---------- 表格参考 ----------
+
+class SheetCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: str = Field(default="", max_length=500)
+
+
+class SheetMeta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    description: str
+    file_name: str
+    sheet_count: int
+    rows_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class SheetListOut(BaseModel):
+    total: int
+    items: list[SheetMeta]
+
+
+class SheetTable(BaseModel):
+    """单个工作表的解析结果。"""
+
+    name: str
+    headers: list[str]
+    rows: list[list[str]]
+
+
+class SheetOut(SheetMeta):
+    tables: list[SheetTable]
+
+
+# ---------- 留言板 ----------
+
+class MessageCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=30)
+    content: str = Field(min_length=1, max_length=1000)
+
+
+class MessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    content: str
+    created_at: datetime
+
+
+class MessageListOut(BaseModel):
+    total: int
+    items: list[MessageOut]

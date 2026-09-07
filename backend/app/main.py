@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .init_db import init_db
-from .routers import auth, health, posts, upload
+from .routers import auth, guestbook, health, posts, sheets, upload
 
 
 @asynccontextmanager
@@ -29,6 +29,8 @@ app.include_router(health.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(posts.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
+app.include_router(sheets.router, prefix="/api")
+app.include_router(guestbook.router, prefix="/api")
 
 
 @app.get("/")

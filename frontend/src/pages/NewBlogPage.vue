@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NButton,
+  NCheckbox,
   NInput,
   NRadioButton,
   NRadioGroup,
@@ -34,6 +35,7 @@ const category = ref('')
 const summary = ref('')
 const cover = ref('')
 const fontFamily = ref('')
+const pinned = ref(false)
 const content = ref('')
 
 const loading = ref(false)
@@ -51,6 +53,7 @@ onMounted(async () => {
       summary.value = data.summary
       cover.value = data.cover_image
       fontFamily.value = data.font_family
+      pinned.value = !!data.pinned
       content.value = data.content
     } catch {
       message.error('加载失败')
@@ -132,6 +135,7 @@ async function save() {
     category: category.value || '未分类',
     font_family: fontFamily.value,
     cover_image: cover.value,
+    pinned: pinned.value,
   }
   try {
     if (isEdit.value) {
@@ -174,6 +178,7 @@ async function save() {
           <NRadioButton value="diary">日记</NRadioButton>
         </NRadioGroup>
         <NInput v-model:value="category" placeholder="分类（如：技术/生活）" style="width: 180px" />
+        <NCheckbox v-model:checked="pinned">置顶</NCheckbox>
         <NSelect
           v-model:value="fontFamily"
           :options="FONT_OPTIONS"

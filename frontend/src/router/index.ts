@@ -16,6 +16,16 @@ const router = createRouter({
       meta: { postType: 'diary' },
     },
     {
+      path: '/sheets',
+      name: 'sheets',
+      component: () => import('../pages/SheetsPage.vue'),
+    },
+    {
+      path: '/guestbook',
+      name: 'guestbook',
+      component: () => import('../pages/GuestbookPage.vue'),
+    },
+    {
       path: '/post/:id',
       name: 'post',
       component: () => import('../pages/BlogDetailPage.vue'),

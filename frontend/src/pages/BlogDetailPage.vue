@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NBackTop,
@@ -34,6 +34,11 @@ function formatDate(s: string) {
   const d = new Date(s)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN')
 }
+
+// Word 下载链接（后端把 HTML 包装成 .doc）
+const docUrl = computed(
+  () => `${import.meta.env.VITE_API_BASE || '/api'}/posts/${route.params.id}/download/doc`,
+)
 
 async function load() {
   loading.value = true
@@ -99,6 +104,13 @@ onMounted(load)
           <span class="category">{{ post.category }}</span>
           <span class="date">{{ formatDate(post.created_at) }}</span>
           <span v-if="auth.isLogin" class="actions">
+            <NButton
+              size="tiny"
+              quaternary
+              tag="a"
+              :href="docUrl"
+              download
+            >下载Word</NButton>
             <NButton size="tiny" quaternary @click="onEdit">编辑</NButton>
             <NPopconfirm @positive-click="onDelete">
               <template #trigger>

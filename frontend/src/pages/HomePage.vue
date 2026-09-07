@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NIcon, NInput, NRadioButton, NRadioGroup, NSpin } from 'naive-ui'
-import { CreateOutline } from '@vicons/ionicons5'
+import {
+  NButton,
+  NIcon,
+  NInput,
+  NSpin,
+  NTag,
+} from 'naive-ui'
+import {
+  ChatbubblesOutline,
+  CreateOutline,
+  GridOutline,
+  BookOutline,
+  HomeOutline,
+} from '@vicons/ionicons5'
 import PostCard from '../components/PostCard.vue'
 import BlogPreview from '../components/BlogPreview.vue'
 import { listPosts, postStats, type PostItem, type PostType } from '../api/posts'
@@ -12,18 +24,19 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const filter = ref<'all' | PostType>('all')
+// 路由决定内容模块：/ 为博客，/diary 为日记
+const filter = ref<PostType>('blog')
 const keyword = ref('')
 const items = ref<PostItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 
-const stats = ref({ all: 0, blog: 0, diary: 0 })
+const stats = ref({ all: 0, blog: 0, diary: 0, sheets: 0, messages: 0 })
 
 const previewVisible = ref(false)
 const previewId = ref<number | null>(null)
 
-const title = computed(() => (route.path === '/diary' ? '日记' : '博客'))
+const title = computed(() => (filter.value === 'diary' ? '日记' : '博客'))
 
 // Hero 问候与日期
 const greeting = computed(() => {
@@ -36,11 +49,19 @@ const today = computed(() =>
   new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }),
 )
 
-// 根据路由初始化过滤（/diary 默认只看日记）
+// 四大模块入口
+const modules = computed(() => [
+  { key: 'home', label: '博客', desc: '技术分享与随笔', icon: HomeOutline, count: stats.value.blog, path: '/' },
+  { key: 'diary', label: '日记', desc: '记录日常点滴', icon: BookOutline, count: stats.value.diary, path: '/diary' },
+  { key: 'sheets', label: '表格参考', desc: 'Excel/CSV 在线预览', icon: GridOutline, count: stats.value.sheets, path: '/sheets' },
+  { key: 'guestbook', label: '留言板', desc: '留下你想说的话', icon: ChatbubblesOutline, count: stats.value.messages, path: '/guestbook' },
+])
+
+// 根据路由切换模块（/ 博客，/diary 日记）
 watch(
   () => route.path,
   () => {
-    filter.value = route.path === '/diary' ? 'diary' : 'all'
+    filter.value = route.path === '/diary' ? 'diary' : 'blog'
     fetchData()
   },
 )
@@ -64,7 +85,7 @@ async function fetchData() {
   if (!raw) loading.value = true
   try {
     const { data } = await listPosts({
-      type: filter.value === 'all' ? undefined : filter.value,
+      type: filter.value,
       q: keyword.value || undefined,
       page: 1,
       size: 50,
@@ -77,18 +98,20 @@ async function fetchData() {
   }
 }
 
-// Hero 统计（单次请求拿三类计数）
+// Hero 统计（单次请求拿全部计数）
 async function fetchStats() {
   try {
     const { data } = await postStats()
-    stats.value = { all: data.all, blog: data.blog, diary: data.diary }
+    stats.value = {
+      all: data.all,
+      blog: data.blog,
+      diary: data.diary,
+      sheets: data.sheets ?? 0,
+      messages: data.messages ?? 0,
+    }
   } catch {
     /* 统计失败不阻塞页面 */
   }
-}
-
-function onFilterChange() {
-  fetchData()
 }
 
 function onSearch() {
@@ -125,26 +148,40 @@ onMounted(() => {
         <div class="hero-stats">
           <div class="stat">
             <span class="num">{{ stats.all }}</span>
-            <span class="label">全部</span>
+            <span class="label">文章</span>
           </div>
           <div class="stat">
-            <span class="num">{{ stats.blog }}</span>
-            <span class="label">博客</span>
+            <span class="num">{{ stats.sheets }}</span>
+            <span class="label">表格</span>
           </div>
           <div class="stat">
-            <span class="num">{{ stats.diary }}</span>
-            <span class="label">日记</span>
+            <span class="num">{{ stats.messages }}</span>
+            <span class="label">留言</span>
           </div>
         </div>
       </div>
     </header>
 
+    <!-- 四大模块入口 -->
+    <nav class="modules">
+      <button
+        v-for="(m, i) in modules"
+        :key="m.key"
+        class="module-card"
+        :class="{ active: route.path === m.path }"
+        :style="{ animationDelay: i * 70 + 'ms' }"
+        @click="router.push(m.path)"
+      >
+        <span class="m-shine" aria-hidden="true"></span>
+        <NIcon :component="m.icon" :size="26" class="m-icon" />
+        <span class="m-label">{{ m.label }}</span>
+        <span class="m-desc">{{ m.desc }}</span>
+        <span class="m-count">{{ m.count }}</span>
+      </button>
+    </nav>
+
     <div class="filters">
-      <NRadioGroup v-model:value="filter" @update:value="onFilterChange">
-        <NRadioButton value="all">全部</NRadioButton>
-        <NRadioButton value="blog">博客</NRadioButton>
-        <NRadioButton value="diary">日记</NRadioButton>
-      </NRadioGroup>
+      <NTag size="small" :bordered="false" type="primary">{{ title }}</NTag>
       <NInput
         v-model:value="keyword"
         placeholder="搜索标题或摘要"
@@ -321,6 +358,112 @@ onMounted(() => {
   margin-left: auto;
   font-size: 13px;
   color: #999;
+}
+
+/* ---------- 四大模块入口卡片 ---------- */
+.modules {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+.module-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(219, 234, 254, 0.55));
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  box-shadow: 0 4px 16px rgba(96, 140, 220, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: module-in 0.5s ease backwards;
+}
+@keyframes module-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.module-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 10px 26px rgba(59, 130, 246, 0.25);
+}
+.module-card.active {
+  border-color: rgba(59, 130, 246, 0.65);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.9), rgba(147, 197, 253, 0.5));
+}
+/* hover 流光扫过 */
+.m-shine {
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55) 50%, transparent);
+  transform: skewX(-20deg);
+  transition: none;
+  pointer-events: none;
+}
+.module-card:hover .m-shine {
+  animation: m-shine 0.9s ease;
+}
+@keyframes m-shine {
+  from {
+    left: -80%;
+  }
+  to {
+    left: 140%;
+  }
+}
+.m-icon {
+  color: #2563eb;
+  margin-bottom: 4px;
+}
+.m-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+.m-desc {
+  font-size: 12px;
+  color: rgba(30, 58, 138, 0.6);
+}
+.m-count {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .modules {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .modules {
+    grid-template-columns: 1fr;
+  }
 }
 
 .grid {

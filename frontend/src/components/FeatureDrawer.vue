@@ -14,6 +14,7 @@ import {
   BookOutline,
   ChatbubblesOutline,
   CreateOutline,
+  GridOutline,
   HomeOutline,
   ImagesOutline,
   InformationCircleOutline,
@@ -32,13 +33,14 @@ const show = ref(false)
 const renderIcon = (icon: any) => () => h(NIcon, null, { default: () => h(icon) })
 
 const options = ref<MenuOption[]>([
-  { label: '博客列表', key: 'home', icon: renderIcon(HomeOutline) },
+  { label: '博客', key: 'home', icon: renderIcon(HomeOutline) },
   { label: '日记', key: 'diary', icon: renderIcon(BookOutline) },
+  { label: '表格参考', key: 'sheets', icon: renderIcon(GridOutline) },
+  { label: '留言板', key: 'guestbook', icon: renderIcon(ChatbubblesOutline) },
   { label: '新建博客', key: 'new', icon: renderIcon(CreateOutline) },
   { type: 'divider', key: 'd1' },
   { label: '关于我', key: 'about', icon: renderIcon(InformationCircleOutline), disabled: true },
   { label: '相册', key: 'album', icon: renderIcon(ImagesOutline), disabled: true },
-  { label: '留言板', key: 'guestbook', icon: renderIcon(ChatbubblesOutline), disabled: true },
   { type: 'divider', key: 'd2' },
 ])
 
@@ -67,6 +69,12 @@ function onSelect(key: string) {
       break
     case 'diary':
       router.push('/diary')
+      break
+    case 'sheets':
+      router.push('/sheets')
+      break
+    case 'guestbook':
+      router.push('/guestbook')
       break
     case 'new':
       router.push(auth.isLogin ? '/new' : '/login?redirect=/new')

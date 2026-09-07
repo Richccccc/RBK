@@ -50,6 +50,36 @@ def create_tables() -> None:
     Base.metadata.create_all(bind=engine)
 
 
+def ensure_columns() -> None:
+    """给已存在的表补齐后加的列（幂等；create_all 不会 ALTER 旧表）。
+
+    用 information_schema 判断列是否存在，兼容 TiDB 与本地 MySQL。
+    """
+    wanted = {
+        "posts": {"pinned": "BOOL NOT NULL DEFAULT 0"},
+    }
+    with engine.connect() as conn:
+        for table, cols in wanted.items():
+            for col, ddl in cols.items():
+                exists = conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t "
+                        "AND COLUMN_NAME = :c"
+                    ),
+                    {"t": table, "c": col},
+                ).scalar()
+                if not exists:
+                    try:
+                        conn.execute(
+                            text(f"ALTER TABLE `{table}` ADD COLUMN `{col}` {ddl}")
+                        )
+                        conn.commit()
+                    except Exception:
+                        # 并发竞争等场景下失败直接忽略
+                        pass
+
+
 def seed_admin() -> None:
     """写入默认管理员账户（仅当不存在时）。"""
     db = SessionLocal()
@@ -68,7 +98,8 @@ def seed_admin() -> None:
 
 
 def init_db() -> None:
-    """初始化入口：按顺序执行建库、建表、写默认账号。"""
+    """初始化入口：按顺序执行建库、建表、补列、写默认账号。"""
     ensure_database()
     create_tables()
+    ensure_columns()
     seed_admin()

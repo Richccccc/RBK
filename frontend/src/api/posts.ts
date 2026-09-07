@@ -9,6 +9,7 @@ export interface PostItem {
   type: PostType
   category: string
   cover_image: string
+  pinned: boolean
   created_at: string
   updated_at: string
 }
@@ -28,6 +29,8 @@ export interface PostStats {
   all: number
   blog: number
   diary: number
+  sheets: number
+  messages: number
 }
 
 export interface PostPayload {
@@ -38,6 +41,7 @@ export interface PostPayload {
   category?: string
   font_family?: string
   cover_image?: string
+  pinned?: boolean
 }
 
 export function listPosts(params?: {

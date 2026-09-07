@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_current_user
-from ..models import Post, PostType, User
+from ..models import GuestbookMessage, Post, PostType, Sheet, User
 from ..schemas import PostCreate, PostListOut, PostListItem, PostOut, PostStatsOut, PostUpdate
 from ..utils.remote_images import externalize_data_urls
 
@@ -20,7 +20,15 @@ def post_stats(db: Session = Depends(get_db)):
     counts = {t: n for t, n in rows}
     blog = counts.get(PostType.blog, 0)
     diary = counts.get(PostType.diary, 0)
-    return PostStatsOut(all=blog + diary, blog=blog, diary=diary)
+    sheets = db.query(func.count(Sheet.id)).scalar() or 0
+    messages = db.query(func.count(GuestbookMessage.id)).scalar() or 0
+    return PostStatsOut(
+        all=blog + diary,
+        blog=blog,
+        diary=diary,
+        sheets=sheets,
+        messages=messages,
+    )
 
 
 @router.get("", response_model=PostListOut)
@@ -40,8 +48,9 @@ def list_posts(
     if q:
         query = query.filter(or_(Post.title.contains(q), Post.summary.contains(q)))
     total = query.count()
+    # 置顶在前，其余按创建时间倒序
     items = (
-        query.order_by(Post.created_at.desc())
+        query.order_by(Post.pinned.desc(), Post.created_at.desc())
         .offset((page - 1) * size)
         .limit(size)
         .all()
@@ -112,3 +121,39 @@ def delete_post(
     db.delete(post)
     db.commit()
     return Response(status_code=204)
+
+
+@router.get("/{post_id}/download/doc")
+def download_post_doc(post_id: int, db: Session = Depends(get_db)):
+    """把文章导出为 Word 可打开的 .doc（HTML 格式，兼容性最好，零依赖）。"""
+    from urllib.parse import quote
+
+    post = db.get(Post, post_id)
+    if post is None:
+        raise HTTPException(status_code=404, detail="博客不存在")
+
+    html = f"""<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word">
+<head><meta charset="utf-8"><title>{post.title}</title>
+<style>
+  body {{ font-family: "Microsoft YaHei", SimSun, sans-serif; font-size: 12pt; line-height: 1.7; }}
+  img {{ max-width: 100%; }}
+  table {{ border-collapse: collapse; }}
+  td, th {{ border: 1px solid #999; padding: 4px 8px; }}
+</style></head>
+<body>
+<h1>{post.title}</h1>
+<p style="color:#888;font-size:10pt;">{post.category} · {post.created_at}</p>
+{post.content}
+</body></html>"""
+
+    filename = quote(f"{post.title}.doc")
+    return Response(
+        content=html.encode("utf-8"),
+        media_type="application/msword",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
+            "Cache-Control": "no-store",
+        },
+    )

@@ -13,7 +13,13 @@ function formatDate(s: string) {
 </script>
 
 <template>
-  <div class="post-card">
+  <div class="post-card" :class="{ pinned: post.pinned }">
+    <div v-if="post.pinned" class="pin-badge">
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+        <path d="M16 3a1 1 0 0 1 .7 1.7l-.9.9 2.6 2.6.9-.9A1 1 0 0 1 21 8l-4 4 .6 2.4a1 1 0 0 1-1.7 1L12 12l-5.3 5.3a1 1 0 0 1-1.4-1.4L10.6 11 7.6 8a1 1 0 0 1 1-1.7L11 7l4-4a1 1 0 0 1 1-.1z" />
+      </svg>
+      置顶
+    </div>
     <div class="cover">
       <img v-if="post.cover_image" :src="post.cover_image" alt="cover" />
       <div v-else class="cover-text">{{ post.title }}</div>
@@ -62,6 +68,27 @@ function formatDate(s: string) {
 .post-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 22px rgba(59, 130, 246, 0.18);
+}
+/* 置顶角标与边框高亮 */
+.post-card.pinned {
+  border: 1px solid rgba(59, 130, 246, 0.45);
+}
+.pin-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #1d4ed8, #3b82f6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  box-shadow: 0 3px 10px rgba(29, 78, 216, 0.35);
 }
 /* hover 顶部流光 */
 .post-card::before {
