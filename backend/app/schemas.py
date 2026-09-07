@@ -21,6 +21,18 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     username: str
+    nickname: str = ""
+    phone: str = ""
+    email: str = ""
+    avatar_url: str = ""
+    created_at: Optional[datetime] = None
+
+
+class UserUpdateIn(BaseModel):
+    """个人资料更新：只允许改展示性字段。"""
+    nickname: str = Field(default="", max_length=50)
+    phone: str = Field(default="", max_length=20)
+    email: str = Field(default="", max_length=120)
 
 
 class TokenOut(BaseModel):

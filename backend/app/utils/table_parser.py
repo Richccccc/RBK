@@ -8,7 +8,7 @@ import io
 from datetime import date, datetime, time
 from typing import Any
 
-MAX_ROWS_PER_SHEET = 5000  # 每个 sheet 最多解析行数（含表头）
+MAX_ROWS_PER_SHEET = 20000  # 每个 sheet 最多解析行数（含表头），防异常大文件拖垮服务器
 MAX_COLS = 64  # 每行最多列数
 
 

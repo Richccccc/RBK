@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NAvatar, NButton, NIcon } from 'naive-ui'
-import { GridOutline, HomeOutline, MenuOutline } from '@vicons/ionicons5'
+import { GridOutline, HomeOutline, MenuOutline, ArrowBackOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
 import DrawerMenu from './DrawerMenu.vue'
 
@@ -29,8 +29,11 @@ const today = computed(() =>
   new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }),
 )
 
-const username = computed(() => auth.user?.username || '朋友')
-const avatarText = computed(() => username.value.slice(0, 1).toUpperCase())
+const displayName = computed(() => auth.displayName)
+const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
+
+// 非主页时状态栏中央显示"返回主页"
+const showBack = computed(() => route.path !== '/')
 </script>
 
 <template>
@@ -54,13 +57,23 @@ const avatarText = computed(() => username.value.slice(0, 1).toUpperCase())
         </button>
       </div>
 
-      <!-- 右：问候 + 日期 + 头像 + 名字 -->
+      <!-- 中：非主页时显示返回主页（绝对居中） -->
+      <button v-if="showBack" class="back-center" @click="router.push('/')">
+        <span class="b-shine" aria-hidden="true"></span>
+        <NIcon :component="ArrowBackOutline" :size="15" />
+        <span class="b-text">返回主页</span>
+      </button>
+
+      <!-- 右：问候 + 日期 + 头像 + 名字（点击进个人中心） -->
       <div class="right">
         <span class="greet">{{ greeting }}</span>
         <span class="dot">·</span>
         <span class="date">{{ today }}</span>
-        <NAvatar round :size="28" class="me-avatar">{{ avatarText }}</NAvatar>
-        <span class="me-name">{{ username }}</span>
+        <button class="me" title="个人中心" @click="router.push('/profile')">
+          <NAvatar v-if="auth.user?.avatar_url" round :size="28" class="me-avatar" :src="auth.user.avatar_url" />
+          <NAvatar v-else round :size="28" class="me-avatar">{{ avatarText }}</NAvatar>
+          <span class="me-name">{{ displayName }}</span>
+        </button>
       </div>
     </div>
 
@@ -155,6 +168,58 @@ const avatarText = computed(() => username.value.slice(0, 1).toUpperCase())
   }
 }
 
+/* 中央：返回主页（绝对居中，不随左右内容挤压） */
+.bar-inner {
+  position: relative;
+}
+.back-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #4b5563;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.back-center:hover {
+  color: #2563eb;
+  background: rgba(219, 234, 254, 0.6);
+}
+/* hover 流光扫过 */
+.b-shine {
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.5) 50%, transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+.back-center:hover .b-shine {
+  animation: b-shine 0.8s ease;
+}
+@keyframes b-shine {
+  from {
+    left: -80%;
+  }
+  to {
+    left: 140%;
+  }
+}
+
 /* 右侧：问候 + 日期 + 头像 + 名字 */
 .right {
   display: flex;
@@ -172,8 +237,49 @@ const avatarText = computed(() => username.value.slice(0, 1).toUpperCase())
 .dot {
   color: rgba(30, 58, 138, 0.35);
 }
-.me-avatar {
+/* 右侧头像+名字：可点击进入个人中心，hover 流光 */
+.me {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-left: 6px;
+  padding: 3px 10px 3px 4px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.me:hover {
+  background: rgba(219, 234, 254, 0.6);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.18);
+}
+.me::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.6) 50%, transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+.me:hover::after {
+  animation: me-shine 0.8s ease;
+}
+@keyframes me-shine {
+  from {
+    left: -80%;
+  }
+  to {
+    left: 140%;
+  }
+}
+.me-avatar {
   background: linear-gradient(135deg, #3b82f6, #60a5fa);
   color: #fff;
   font-weight: 700;
@@ -205,6 +311,13 @@ const avatarText = computed(() => username.value.slice(0, 1).toUpperCase())
     display: none;
   }
   .me-name {
+    display: none;
+  }
+  /* 窄屏中央按钮只留图标 */
+  .back-center {
+    padding: 5px 9px;
+  }
+  .b-text {
     display: none;
   }
 }

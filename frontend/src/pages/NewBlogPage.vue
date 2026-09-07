@@ -95,26 +95,38 @@ async function onPickCover(options: NUploadRequest) {
   }
 }
 
-async function importWord(options: NUploadRequest) {
+// 多选导入：按选择顺序串行导入，内容依次追加到编辑器（避免并发乱序/覆盖）
+let importChain: Promise<void> = Promise.resolve()
+let pendingImports = 0
+
+function importWord(options: NUploadRequest) {
   const file = options?.file?.file
   if (!file) {
     message.error('未获取到文件')
     return
   }
+  pendingImports++
   importingWord.value = true
-  try {
-    const html = await uploadWord(file)
-    content.value = html
-    if (!title.value) {
-      const name = options.file.name || file.name
-      title.value = name.replace(/\.docx?$/i, '')
+  importChain = importChain.then(async () => {
+    try {
+      const html = await uploadWord(file)
+      // 已有内容时追加（空编辑器直接写入）
+      content.value =
+        content.value && content.value !== '<p></p>'
+          ? `${content.value}<p><br></p>${html}`
+          : html
+      if (!title.value) {
+        const name = options.file.name || file.name
+        title.value = name.replace(/\.docx?$/i, '')
+      }
+      message.success(`已导入 ${file.name}`)
+    } catch (e: any) {
+      message.error(extractError(e, `导入 ${file.name} 失败`))
+    } finally {
+      pendingImports--
+      if (pendingImports === 0) importingWord.value = false
     }
-    message.success('Word 内容已导入编辑器')
-  } catch (e: any) {
-    message.error(extractError(e, 'Word 导入失败'))
-  } finally {
-    importingWord.value = false
-  }
+  })
 }
 
 async function save() {
@@ -163,7 +175,7 @@ async function save() {
       <div class="head-row">
         <NInput v-model:value="title" size="large" placeholder="输入标题…" class="title-input" />
         <div class="head-actions">
-          <NUpload accept=".docx" :show-file-list="false" :custom-request="importWord">
+          <NUpload accept=".docx" multiple :show-file-list="false" :custom-request="importWord">
             <NButton :loading="importingWord">导入 Word</NButton>
           </NUpload>
           <NButton type="primary" :loading="saving" @click="save">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   NButton,
   NCard,
@@ -39,10 +39,10 @@ const total = ref(0)
 const loading = ref(false)
 const keyword = ref('')
 
-// 上传弹层
+// 上传弹层（支持多选，逐个上传）
 const uploadVisible = ref(false)
 const uploading = ref(false)
-const uploadFile = ref<File | null>(null)
+const uploadFiles = ref<File[]>([])
 const formName = ref('')
 const formDesc = ref('')
 
@@ -104,38 +104,52 @@ function openUpload() {
     message.warning('请先登录')
     return
   }
-  uploadFile.value = null
+  uploadFiles.value = []
   formName.value = ''
   formDesc.value = ''
   uploadVisible.value = true
 }
 
-function onFileChange(options: { file: UploadFileInfo }) {
-  const f = options.file.file
-  if (f && /\.(xlsx|csv)$/i.test(f.name)) {
-    uploadFile.value = f
-    if (!formName.value) formName.value = f.name.replace(/\.(xlsx|csv)$/i, '')
-  } else {
-    uploadFile.value = null
-    message.warning('仅支持 .xlsx 与 .csv 文件')
+function onFilesChange(info: { fileList: UploadFileInfo[] }) {
+  const files: File[] = []
+  let bad = false
+  for (const fi of info.fileList) {
+    const f = fi.file
+    if (!f) continue
+    if (/\.(xlsx|csv)$/i.test(f.name)) files.push(f)
+    else bad = true
   }
+  uploadFiles.value = files
+  if (bad) message.warning('已忽略非 xlsx/csv 文件')
+  // 单个文件时默认名称取文件名；多选时各用各的文件名
+  formName.value = files.length === 1 ? files[0].name.replace(/\.(xlsx|csv)$/i, '') : ''
 }
 
 async function submitUpload() {
-  if (!uploadFile.value) {
+  if (!uploadFiles.value.length) {
     message.warning('请选择 xlsx 或 csv 文件')
     return
   }
   uploading.value = true
-  try {
-    await uploadSheet(uploadFile.value, formName.value.trim(), formDesc.value.trim())
-    message.success('上传并解析成功')
+  let ok = 0
+  let fail = 0
+  for (const f of uploadFiles.value) {
+    // 单文件用表单里的名称（可编辑），多选时各用各的文件名，备注为公共值
+    const name = uploadFiles.value.length === 1 ? formName.value.trim() : ''
+    try {
+      await uploadSheet(f, name, formDesc.value.trim())
+      ok++
+    } catch {
+      fail++
+    }
+  }
+  uploading.value = false
+  if (ok) {
+    message.success(`成功上传 ${ok} 个模板${fail ? `，${fail} 个失败` : ''}`)
     uploadVisible.value = false
     fetchData()
-  } catch (e: any) {
-    message.error(e?.response?.data?.detail || '解析失败')
-  } finally {
-    uploading.value = false
+  } else {
+    message.error('全部上传失败')
   }
 }
 
@@ -153,102 +167,6 @@ async function openPreview(id: number) {
     previewLoading.value = false
   }
 }
-
-// —— 自定义横向滚动条 ——
-// 原因：NDataTable virtual-scroll 模式下 naive-ui 不渲染横向滚动条 rail，
-// 内容超宽只能编程滚动，用户无法拖动。这里自己在表格下方画一条并同步 scrollLeft。
-const tableWrap = ref<HTMLElement | null>(null)
-const hScroll = reactive({ sw: 1, cw: 1, sl: 0 })
-
-function scrollEl(): HTMLElement | null {
-  const root = tableWrap.value
-  if (!root) return null
-  // virtual-scroll 模式虚拟列表容器（.v-vl）即横向滚动容器
-  return root.querySelector('.v-vl') as HTMLElement | null
-}
-
-function syncHScroll() {
-  const el = scrollEl()
-  if (!el) return
-  hScroll.sw = el.scrollWidth
-  hScroll.cw = el.clientWidth
-  hScroll.sl = el.scrollLeft
-}
-
-const hsOverflow = computed(() => hScroll.sw > hScroll.cw + 2)
-
-const hsThumbStyle = computed(() => {
-  const ratio = Math.min(1, hScroll.cw / hScroll.sw)
-  const pos = hScroll.sw > hScroll.cw ? hScroll.sl / (hScroll.sw - hScroll.cw) : 0
-  return {
-    width: `${ratio * 100}%`,
-    left: `${pos * (1 - ratio) * 100}%`,
-  }
-})
-
-let hsDrag: { startX: number; startLeft: number; trackW: number } | null = null
-
-function onThumbDown(e: MouseEvent) {
-  const el = scrollEl()
-  if (!el) return
-  hsDrag = {
-    startX: e.clientX,
-    startLeft: el.scrollLeft,
-    trackW: (e.currentTarget as HTMLElement).parentElement?.clientWidth || 1,
-  }
-  window.addEventListener('mousemove', onThumbMove)
-  window.addEventListener('mouseup', onThumbUp)
-  e.preventDefault()
-}
-
-function onThumbMove(e: MouseEvent) {
-  const el = scrollEl()
-  if (!el || !hsDrag) return
-  const max = el.scrollWidth - el.clientWidth
-  el.scrollLeft = Math.min(
-    max,
-    Math.max(0, hsDrag.startLeft + ((e.clientX - hsDrag.startX) / hsDrag.trackW) * el.scrollWidth),
-  )
-}
-
-function onThumbUp() {
-  hsDrag = null
-  window.removeEventListener('mousemove', onThumbMove)
-  window.removeEventListener('mouseup', onThumbUp)
-}
-
-function onTrackDown(e: MouseEvent) {
-  const el = scrollEl()
-  const track = e.currentTarget as HTMLElement
-  if (!el) return
-  const rect = track.getBoundingClientRect()
-  const max = el.scrollWidth - el.clientWidth
-  const target = ((e.clientX - rect.left) / rect.width) * el.scrollWidth - el.clientWidth / 2
-  el.scrollLeft = Math.min(max, Math.max(0, target))
-}
-
-// 表格内部滚动（滚轮/拖动/编程）时同步 thumb；scroll 不冒泡，用 document 捕获
-function onDocScrollCapture(e: Event) {
-  const t = e.target
-  if (t instanceof Element && tableWrap.value?.contains(t)) syncHScroll()
-}
-
-onMounted(() => {
-  document.addEventListener('scroll', onDocScrollCapture, { capture: true, passive: true })
-})
-
-onUnmounted(() => {
-  document.removeEventListener('scroll', onDocScrollCapture, { capture: true } as EventListenerOptions)
-  window.removeEventListener('mousemove', onThumbMove)
-  window.removeEventListener('mouseup', onThumbUp)
-})
-
-// 预览打开 / 切换工作表后，等虚拟列表挂载再同步一次滚动条状态
-watch([previewVisible, activeTab], async ([visible]) => {
-  if (!visible) return
-  await nextTick()
-  setTimeout(syncHScroll, 80)
-})
 
 async function onDelete(id: number) {
   try {
@@ -339,17 +257,22 @@ onMounted(fetchData)
       <div class="upload-form">
         <NUpload
           accept=".xlsx,.csv"
-          :max="1"
+          multiple
+          :max="10"
           :default-upload="false"
           :show-file-list="true"
-          @change="onFileChange"
+          @change="onFilesChange"
         >
-          <NButton>选择文件（.xlsx / .csv，≤8MB）</NButton>
+          <NButton>选择文件（可多选，.xlsx / .csv，单个 ≤8MB）</NButton>
         </NUpload>
-        <NInput v-model:value="formName" placeholder="模板名称（默认取文件名）" />
-        <NInput v-model:value="formDesc" type="textarea" placeholder="备注（可选）" :rows="2" />
+        <NInput
+          v-model:value="formName"
+          placeholder="模板名称（默认取文件名）"
+          :disabled="uploadFiles.length > 1"
+        />
+        <NInput v-model:value="formDesc" type="textarea" placeholder="备注（多选时应用到所有文件）" :rows="2" />
         <NButton type="primary" block :loading="uploading" @click="submitUpload">
-          上传并解析
+          {{ uploadFiles.length > 1 ? `上传并解析（${uploadFiles.length} 个）` : '上传并解析' }}
         </NButton>
       </div>
     </NModal>
@@ -360,7 +283,7 @@ onMounted(fetchData)
         <div v-if="detail" class="preview">
           <div class="preview-bar">
             <NTag size="small" :bordered="false" type="primary">
-              {{ detail.rows_count }} 行数据
+              当前表 {{ currentTable?.rows.length || 0 }} 行 × {{ currentTable?.headers.length || 0 }} 列
             </NTag>
             <NButton
               size="small"
@@ -373,37 +296,25 @@ onMounted(fetchData)
             </NButton>
           </div>
 
-          <div ref="tableWrap">
-            <NTabs v-model:value="activeTab" type="line" size="small">
-              <NTabPane
-                v-for="t in detail.tables"
-                :key="t.name"
-                :name="t.name"
-              >
-                <template #tab>{{ t.name }}</template>
-                <NDataTable
-                  :columns="previewColumns"
-                  :data="previewData"
-                  :row-key="(r: Record<string, string>) => r.__idx"
-                  :max-height="560"
-                  :scroll-x="previewScrollX"
-                  virtual-scroll
-                  size="small"
-                  class="preview-table"
-                />
-                <!-- virtual-scroll 模式 naive-ui 不渲染横向滚动条，自绘一条 -->
-                <div v-if="hsOverflow" class="hscroll">
-                  <div class="hs-track" @mousedown="onTrackDown">
-                    <div
-                      class="hs-thumb"
-                      :style="hsThumbStyle"
-                      @mousedown.stop="onThumbDown"
-                    ></div>
-                  </div>
-                </div>
-              </NTabPane>
-            </NTabs>
-          </div>
+          <NTabs v-model:value="activeTab" type="line" size="small">
+            <NTabPane
+              v-for="t in detail.tables"
+              :key="t.name"
+              :name="t.name"
+            >
+              <template #tab>{{ t.name }}</template>
+              <NDataTable
+                :columns="previewColumns"
+                :data="previewData"
+                :row-key="(r: Record<string, string>) => r.__idx"
+                :max-height="560"
+                :scroll-x="previewScrollX"
+                virtual-scroll
+                size="small"
+                class="preview-table"
+              />
+            </NTabPane>
+          </NTabs>
         </div>
         <NEmpty v-else-if="!previewLoading" description="暂无数据" />
       </NDrawerContent>
@@ -412,36 +323,22 @@ onMounted(fetchData)
 </template>
 
 <style scoped>
-/* 自绘横向滚动条（virtual-scroll 模式 naive-ui 不渲染横向 rail） */
-.hscroll {
-  padding: 8px 2px 2px;
-  user-select: none;
+/* 预览表格：加粗并常显 naive-ui 原生横向滚动条（默认 3px 细条几乎看不见） */
+.preview-table :deep(.n-scrollbar-rail--horizontal) {
+  height: 12px;
+  opacity: 1;
 }
-.hs-track {
-  position: relative;
-  height: 10px;
-  border-radius: 5px;
-  background: #e8edf4;
-  cursor: pointer;
+.preview-table :deep(.n-scrollbar-rail--horizontal .n-scrollbar-container) {
+  height: 12px;
 }
-.hs-track:hover {
-  background: #dfe6f0;
-}
-.hs-thumb {
-  position: absolute;
-  top: 1px;
+.preview-table :deep(.n-scrollbar-rail--horizontal .n-scrollbar-content) {
   height: 8px;
   border-radius: 4px;
-  background: #a8b6c8;
-  cursor: grab;
-  transition: background 0.15s ease;
+  background-color: rgba(100, 116, 139, 0.5);
 }
-.hs-thumb:hover {
-  background: #64748b;
-}
-.hs-thumb:active {
-  cursor: grabbing;
-  background: #334155;
+.preview-table :deep(.n-scrollbar-rail--horizontal:hover .n-scrollbar-content),
+.preview-table :deep(.n-scrollbar-rail--horizontal .n-scrollbar-content:active) {
+  background-color: rgba(51, 65, 85, 0.75);
 }
 
 .panel {

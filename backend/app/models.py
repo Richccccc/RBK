@@ -19,6 +19,10 @@ class User(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
     password_hash = Column(String(128), nullable=False)
+    nickname = Column(String(50), default="")  # 平台昵称（展示用，空则回退 username）
+    phone = Column(String(20), default="")
+    email = Column(String(120), default="")
+    avatar_url = Column(String(500), default="")  # 头像（GitHub 图床外链或 data URL）
     created_at = Column(DateTime, server_default=func.now())
 
 

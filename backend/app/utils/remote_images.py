@@ -25,7 +25,7 @@ _EXT_BY_MIME = {
 }
 
 
-def upload_image_bytes(data: bytes, mime: str = "image/jpeg") -> str:
+def upload_image_bytes(data: bytes, mime: str = "image/jpeg", subdir: str = "images") -> str:
     """上传图片字节到 GitHub 仓库，返回外链 URL。未配置或失败抛异常，由调用方决定降级行为。"""
     if not (settings.github_token and settings.github_repo):
         raise RuntimeError("GitHub 图床未配置（缺少 GITHUB_TOKEN 或 GITHUB_REPO）")
@@ -33,7 +33,8 @@ def upload_image_bytes(data: bytes, mime: str = "image/jpeg") -> str:
     subtype = mime.split("/", 1)[1].lower() if "/" in mime else "jpg"
     ext = _EXT_BY_MIME.get(subtype, "jpg")
     now = datetime.now(timezone.utc)
-    path = "images/%s/%d-%s.%s" % (
+    path = "%s/%s/%d-%s.%s" % (
+        subdir.strip("/"),
         now.strftime("%Y%m"),
         int(now.timestamp()),
         secrets.token_hex(4),
