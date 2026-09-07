@@ -108,6 +108,7 @@ class SheetMeta(BaseModel):
     file_name: str
     sheet_count: int
     rows_count: int
+    cols_count: int = 0
     created_at: datetime
     updated_at: datetime
 

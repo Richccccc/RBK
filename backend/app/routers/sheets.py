@@ -67,6 +67,7 @@ async def create_sheet(
         data_json=json.dumps(tables, ensure_ascii=False),
         sheet_count=len(tables),
         rows_count=total_rows,
+        cols_count=max((len(t.get("headers") or []) for t in tables), default=0),
         author_id=user.id,
     )
     db.add(sheet)

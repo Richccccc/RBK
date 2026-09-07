@@ -57,6 +57,7 @@ def ensure_columns() -> None:
     """
     wanted = {
         "posts": {"pinned": "BOOL NOT NULL DEFAULT 0"},
+        "sheets": {"cols_count": "INT NOT NULL DEFAULT 0"},
     }
     with engine.connect() as conn:
         for table, cols in wanted.items():

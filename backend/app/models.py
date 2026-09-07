@@ -53,6 +53,7 @@ class Sheet(Base):
     data_json = Column(LONGTEXT, nullable=False)  # 解析结果：[{name, headers, rows}, ...]
     sheet_count = Column(Integer, default=1)
     rows_count = Column(Integer, default=0)  # 所有 sheet 数据行总数
+    cols_count = Column(Integer, default=0)  # 所有 sheet 中最大列数
     author_id = Column(BigInteger, nullable=False, index=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

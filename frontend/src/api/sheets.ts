@@ -13,6 +13,7 @@ export interface SheetMeta {
   file_name: string
   sheet_count: number
   rows_count: number
+  cols_count: number
   created_at: string
   updated_at: string
 }

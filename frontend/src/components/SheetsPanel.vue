@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   NButton,
   NCard,
@@ -52,7 +52,7 @@ const previewLoading = ref(false)
 const detail = ref<SheetDetail | null>(null)
 const activeTab = ref('')
 
-// 预览表格列（每个 sheet 动态生成）
+// 预览表格列（每个 sheet 动态生成）；横向滚动需要显式 scroll-x（列数 × 列宽）
 const previewColumns = computed(() => {
   const t = currentTable.value
   if (!t) return []
@@ -63,6 +63,10 @@ const previewColumns = computed(() => {
     ellipsis: { tooltip: true },
   }))
 })
+
+const previewScrollX = computed(() =>
+  Math.max(720, (currentTable.value?.headers.length || 0) * 170 + 40),
+)
 
 const previewData = computed(() => {
   const t = currentTable.value
@@ -150,6 +154,102 @@ async function openPreview(id: number) {
   }
 }
 
+// —— 自定义横向滚动条 ——
+// 原因：NDataTable virtual-scroll 模式下 naive-ui 不渲染横向滚动条 rail，
+// 内容超宽只能编程滚动，用户无法拖动。这里自己在表格下方画一条并同步 scrollLeft。
+const tableWrap = ref<HTMLElement | null>(null)
+const hScroll = reactive({ sw: 1, cw: 1, sl: 0 })
+
+function scrollEl(): HTMLElement | null {
+  const root = tableWrap.value
+  if (!root) return null
+  // virtual-scroll 模式虚拟列表容器（.v-vl）即横向滚动容器
+  return root.querySelector('.v-vl') as HTMLElement | null
+}
+
+function syncHScroll() {
+  const el = scrollEl()
+  if (!el) return
+  hScroll.sw = el.scrollWidth
+  hScroll.cw = el.clientWidth
+  hScroll.sl = el.scrollLeft
+}
+
+const hsOverflow = computed(() => hScroll.sw > hScroll.cw + 2)
+
+const hsThumbStyle = computed(() => {
+  const ratio = Math.min(1, hScroll.cw / hScroll.sw)
+  const pos = hScroll.sw > hScroll.cw ? hScroll.sl / (hScroll.sw - hScroll.cw) : 0
+  return {
+    width: `${ratio * 100}%`,
+    left: `${pos * (1 - ratio) * 100}%`,
+  }
+})
+
+let hsDrag: { startX: number; startLeft: number; trackW: number } | null = null
+
+function onThumbDown(e: MouseEvent) {
+  const el = scrollEl()
+  if (!el) return
+  hsDrag = {
+    startX: e.clientX,
+    startLeft: el.scrollLeft,
+    trackW: (e.currentTarget as HTMLElement).parentElement?.clientWidth || 1,
+  }
+  window.addEventListener('mousemove', onThumbMove)
+  window.addEventListener('mouseup', onThumbUp)
+  e.preventDefault()
+}
+
+function onThumbMove(e: MouseEvent) {
+  const el = scrollEl()
+  if (!el || !hsDrag) return
+  const max = el.scrollWidth - el.clientWidth
+  el.scrollLeft = Math.min(
+    max,
+    Math.max(0, hsDrag.startLeft + ((e.clientX - hsDrag.startX) / hsDrag.trackW) * el.scrollWidth),
+  )
+}
+
+function onThumbUp() {
+  hsDrag = null
+  window.removeEventListener('mousemove', onThumbMove)
+  window.removeEventListener('mouseup', onThumbUp)
+}
+
+function onTrackDown(e: MouseEvent) {
+  const el = scrollEl()
+  const track = e.currentTarget as HTMLElement
+  if (!el) return
+  const rect = track.getBoundingClientRect()
+  const max = el.scrollWidth - el.clientWidth
+  const target = ((e.clientX - rect.left) / rect.width) * el.scrollWidth - el.clientWidth / 2
+  el.scrollLeft = Math.min(max, Math.max(0, target))
+}
+
+// 表格内部滚动（滚轮/拖动/编程）时同步 thumb；scroll 不冒泡，用 document 捕获
+function onDocScrollCapture(e: Event) {
+  const t = e.target
+  if (t instanceof Element && tableWrap.value?.contains(t)) syncHScroll()
+}
+
+onMounted(() => {
+  document.addEventListener('scroll', onDocScrollCapture, { capture: true, passive: true })
+})
+
+onUnmounted(() => {
+  document.removeEventListener('scroll', onDocScrollCapture, { capture: true } as EventListenerOptions)
+  window.removeEventListener('mousemove', onThumbMove)
+  window.removeEventListener('mouseup', onThumbUp)
+})
+
+// 预览打开 / 切换工作表后，等虚拟列表挂载再同步一次滚动条状态
+watch([previewVisible, activeTab], async ([visible]) => {
+  if (!visible) return
+  await nextTick()
+  setTimeout(syncHScroll, 80)
+})
+
 async function onDelete(id: number) {
   try {
     await deleteSheet(id)
@@ -198,6 +298,9 @@ onMounted(fetchData)
           <div class="s-meta">
             <NTag size="small" :bordered="false">{{ s.sheet_count }} 个工作表</NTag>
             <NTag size="small" :bordered="false" type="primary">{{ s.rows_count }} 行</NTag>
+            <NTag v-if="s.cols_count" size="small" :bordered="false" type="info">
+              {{ s.cols_count }} 列
+            </NTag>
             <span class="s-file">{{ s.file_name }}</span>
             <span class="s-date">{{ fmtDate(s.created_at) }}</span>
           </div>
@@ -270,24 +373,37 @@ onMounted(fetchData)
             </NButton>
           </div>
 
-          <NTabs v-model:value="activeTab" type="line" size="small">
-            <NTabPane
-              v-for="t in detail.tables"
-              :key="t.name"
-              :name="t.name"
-            >
-              <template #tab>{{ t.name }}</template>
-              <NDataTable
-                :columns="previewColumns"
-                :data="previewData"
-                :row-key="(r: Record<string, string>) => r.__idx"
-                :max-height="560"
-                virtual-scroll
-                size="small"
-                class="preview-table"
-              />
-            </NTabPane>
-          </NTabs>
+          <div ref="tableWrap">
+            <NTabs v-model:value="activeTab" type="line" size="small">
+              <NTabPane
+                v-for="t in detail.tables"
+                :key="t.name"
+                :name="t.name"
+              >
+                <template #tab>{{ t.name }}</template>
+                <NDataTable
+                  :columns="previewColumns"
+                  :data="previewData"
+                  :row-key="(r: Record<string, string>) => r.__idx"
+                  :max-height="560"
+                  :scroll-x="previewScrollX"
+                  virtual-scroll
+                  size="small"
+                  class="preview-table"
+                />
+                <!-- virtual-scroll 模式 naive-ui 不渲染横向滚动条，自绘一条 -->
+                <div v-if="hsOverflow" class="hscroll">
+                  <div class="hs-track" @mousedown="onTrackDown">
+                    <div
+                      class="hs-thumb"
+                      :style="hsThumbStyle"
+                      @mousedown.stop="onThumbDown"
+                    ></div>
+                  </div>
+                </div>
+              </NTabPane>
+            </NTabs>
+          </div>
         </div>
         <NEmpty v-else-if="!previewLoading" description="暂无数据" />
       </NDrawerContent>
@@ -296,6 +412,38 @@ onMounted(fetchData)
 </template>
 
 <style scoped>
+/* 自绘横向滚动条（virtual-scroll 模式 naive-ui 不渲染横向 rail） */
+.hscroll {
+  padding: 8px 2px 2px;
+  user-select: none;
+}
+.hs-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: #e8edf4;
+  cursor: pointer;
+}
+.hs-track:hover {
+  background: #dfe6f0;
+}
+.hs-thumb {
+  position: absolute;
+  top: 1px;
+  height: 8px;
+  border-radius: 4px;
+  background: #a8b6c8;
+  cursor: grab;
+  transition: background 0.15s ease;
+}
+.hs-thumb:hover {
+  background: #64748b;
+}
+.hs-thumb:active {
+  cursor: grabbing;
+  background: #334155;
+}
+
 .panel {
   animation: panel-in 0.4s ease backwards;
 }
