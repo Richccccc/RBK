@@ -1,26 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NAvatar, NButton, NIcon } from 'naive-ui'
-import {
-  BookOutline,
-  ChatbubblesOutline,
-  GridOutline,
-  HomeOutline,
-  LogOutOutline,
-} from '@vicons/ionicons5'
+import { GridOutline, HomeOutline, MenuOutline } from '@vicons/ionicons5'
 import { useAuthStore } from '../stores/auth'
+import DrawerMenu from './DrawerMenu.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-// 一级菜单（顶栏内切换，不再使用左上角浮动菜单）
-const menus = [
+const menuOpen = ref(false)
+
+// 状态栏快捷跳转（日记与留言板从菜单进入）
+const shortcuts = [
   { key: 'home', label: '博客', icon: HomeOutline, path: '/' },
-  { key: 'diary', label: '日记', icon: BookOutline, path: '/diary' },
   { key: 'templates', label: '模板', icon: GridOutline, path: '/templates' },
-  { key: 'guestbook', label: '留言板', icon: ChatbubblesOutline, path: '/guestbook' },
 ]
 
 // 问候语与日期（横向排开，紧凑显示）
@@ -36,59 +31,41 @@ const today = computed(() =>
 
 const username = computed(() => auth.user?.username || '朋友')
 const avatarText = computed(() => username.value.slice(0, 1).toUpperCase())
-
-function isActive(path: string) {
-  return route.path === path
-}
-
-function logout() {
-  auth.logout()
-  // 显式去登录页（push('/') 在首页时是同路由导航，守卫不会重定向）
-  router.push('/login')
-}
 </script>
 
 <template>
   <header class="topbar">
     <div class="bar-inner">
-      <!-- 左：头像 + 名字 -->
-      <div class="me">
-        <NAvatar round :size="28" class="me-avatar">{{ avatarText }}</NAvatar>
-        <span class="me-name">{{ username }}</span>
-      </div>
-
-      <!-- 中：一级菜单 -->
-      <nav class="nav">
+      <!-- 左：菜单按钮 + 快捷跳转 -->
+      <div class="left">
+        <NButton quaternary circle size="small" class="menu-btn" title="菜单" @click="menuOpen = true">
+          <template #icon><NIcon :component="MenuOutline" :size="19" /></template>
+        </NButton>
         <button
-          v-for="m in menus"
-          :key="m.key"
+          v-for="s in shortcuts"
+          :key="s.key"
           class="nav-item"
-          :class="{ active: isActive(m.path) }"
-          @click="router.push(m.path)"
+          :class="{ active: route.path === s.path }"
+          @click="router.push(s.path)"
         >
           <span class="n-shine" aria-hidden="true"></span>
-          <NIcon :component="m.icon" :size="15" />
-          <span>{{ m.label }}</span>
+          <NIcon :component="s.icon" :size="15" />
+          <span>{{ s.label }}</span>
         </button>
-      </nav>
+      </div>
 
-      <!-- 右：问候 + 日期 + 退出 -->
+      <!-- 右：问候 + 日期 + 头像 + 名字 -->
       <div class="right">
         <span class="greet">{{ greeting }}</span>
         <span class="dot">·</span>
         <span class="date">{{ today }}</span>
-        <NButton
-          quaternary
-          circle
-          size="tiny"
-          class="logout"
-          title="退出登录"
-          @click="logout"
-        >
-          <template #icon><NIcon :component="LogOutOutline" :size="16" /></template>
-        </NButton>
+        <NAvatar round :size="28" class="me-avatar">{{ avatarText }}</NAvatar>
+        <span class="me-name">{{ username }}</span>
       </div>
     </div>
+
+    <!-- 抽屉菜单：跳转 / 新建 / 退出 -->
+    <DrawerMenu v-model:show="menuOpen" />
   </header>
 </template>
 
@@ -110,45 +87,23 @@ function logout() {
   padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 18px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-/* 左侧头像与名字 */
-.me {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.me-avatar {
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
-}
-.me-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e3a8a;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 中间一级菜单 */
-.nav {
+/* 左侧：菜单按钮 + 快捷跳转 */
+.left {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.nav::-webkit-scrollbar {
-  display: none;
+.menu-btn {
+  color: #1e3a8a;
+  margin-right: 2px;
+}
+.menu-btn:hover {
+  color: #2563eb;
 }
 .nav-item {
   position: relative;
@@ -200,11 +155,11 @@ function logout() {
   }
 }
 
-/* 右侧问候与日期 */
+/* 右侧：问候 + 日期 + 头像 + 名字 */
 .right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
   font-size: 12.5px;
   color: rgba(30, 58, 138, 0.66);
@@ -217,12 +172,22 @@ function logout() {
 .dot {
   color: rgba(30, 58, 138, 0.35);
 }
-.logout {
-  margin-left: 4px;
-  color: #93a6c4;
+.me-avatar {
+  margin-left: 6px;
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
 }
-.logout:hover {
-  color: #2563eb;
+.me-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e3a8a;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 860px) {
@@ -234,7 +199,7 @@ function logout() {
 @media (max-width: 640px) {
   .bar-inner {
     padding: 0 12px;
-    gap: 10px;
+    gap: 8px;
   }
   .greet {
     display: none;
